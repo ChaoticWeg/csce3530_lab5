@@ -8,28 +8,59 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
-        return abort_args(argv[0]);
-
-    const char *filename = argv[1];
     errno = 0;
 
-    // TODO create and initialize graph
-
+    // allow passing router text file as arg, default to router.txt
+    const char *filename = argc > 1 ? argv[1] : "router.txt";
     printf("Loading network graph from %s ... ", filename);
 
-    // open file
+    // open router text file
     FILE *infile = fopen(filename, "r");
-    if (infile == NULL || errno != 0)
-        return abort_error(errno);
+    abort_if_error();
 
-    // TODO load graph
+    // create graph and load from file
+    graph_t *graph = graph_create();
+    graph_load(graph, infile);
+    abort_if_error();
 
     // close file
     fclose(infile);
+    abort_if_error();
+
+    // done reading graph from file
     printf("OK\n");
 
-    // TODO dijkstra for each node as source
+    // print graph as adjacency matrix, because we can
+    printf("\nGraph as adjacency matrix:\n\n");
+    graph_print_adjacency(graph);
+    abort_if_error();
 
-    return 0;
+    // truncate dijkstra's output file
+    FILE *outfile = fopen("LS.txt", "w+");
+    abort_if_error();
+
+    // do dijkstra's to find the shortest path to each node, for each node
+    printf("\nShortest paths:\n\n");
+    for (size_t i = 0; i < graph->vertices_len; i++)
+    {
+        for (size_t j = 0; j < graph->vertices_len; j++)
+        {
+            if (i == j) continue;
+
+            dijkstra(graph, i, j);
+            graph_print_shortest_path(outfile, graph, i, j);
+            abort_if_error();
+        }
+
+        if (i < graph->vertices_len - 1)
+        {
+            print_and_file(outfile, "%s", "--------\n");
+        }
+    }
+
+    print_and_file(outfile, "%s", "\n");
+    fclose(outfile);
+
+    graph_destroy(graph);
+    return errno;
 }

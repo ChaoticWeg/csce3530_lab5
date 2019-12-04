@@ -1,6 +1,10 @@
+#include "common.h"
 #include "graph.h"
 
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 graph_t *graph_create()
 {
@@ -46,6 +50,13 @@ void graph_add_vertex(graph_t *graph, size_t index)
     }
 }
 
+// get a vertex from the graph
+vertex_t *graph_get_vertex(const graph_t *graph, size_t i)
+{
+    if (i >= graph->vertices_len) return NULL;
+    return graph->vertices[i];
+}
+
 // add an edge to the graph
 void graph_add_edge(graph_t *graph, char left_i, char right_i, size_t weight)
 {
@@ -58,22 +69,114 @@ void graph_add_edge(graph_t *graph, char left_i, char right_i, size_t weight)
     graph_add_vertex(graph, right_i);
 
     // create two new edges: one for left->right, and one for right->left
-    edge_t *e_lr = calloc(1, sizeof(edge_t));
-    edge_t *e_rl = calloc(1, sizeof(edge_t));
+    edge_t *edge = calloc(1, sizeof(edge_t));
 
     // left->right edge has target vertex right_i, while right->left is flipped
-    e_lr->vertex = right_i;
-    e_rl->vertex = left_i;
+    edge->vertex = right_i;
+    edge->weight = weight;
 
     // add these edges to the respective vertices
-    vertex_add_edge(graph->vertices[left_i], e_lr);
-    vertex_add_edge(graph->vertices[right_i], e_rl);
+    vertex_add_edge(graph->vertices[left_i], edge);
 }
 
 // load a graph from file
 void graph_load(graph_t *graph, FILE *file)
 {
+    errno = 0;
 
+    char *buf = calloc(FILE_MAX_LINE_LEN + 1, sizeof(char));
+    if (buf == NULL || errno != 0) return;
+
+    bzero(buf, FILE_MAX_LINE_LEN + 1);
+    if (errno != 0) return;
+
+    size_t line_len;
+    while (getline(&buf, &line_len, file) != -1)
+    {
+        if (errno != 0) return;
+
+        // remove trailing newline(s)
+        line_len = strnlen(buf, FILE_MAX_LINE_LEN);
+        while (buf[line_len - 1] == '\n')
+        {
+            buf[line_len - 1] = 0;
+            line_len--;
+        }
+
+        // parse left, right, and weight from line
+        char left, right; size_t weight;
+        ssize_t items_parsed = sscanf(buf, "%c %c %lu", &left, &right, &weight); // NOLINT(cert-err34-c)
+        if (items_parsed != 3)
+        {
+            errno = ENOEXEC;
+            return;
+        }
+
+        // add edge
+        graph_add_edge(graph, left, right, weight);
+    }
+}
+
+// print a graph as an adjacency matrix
+void graph_print_adjacency(const graph_t *graph)
+{
+    FILE *outfile = fopen("matrix.txt", "w+");
+    if (errno != 0) return;
+
+    print_and_file(outfile, "%s" , "  ");
+    for (size_t i = 0; i < graph->vertices_len; i++)
+    {
+        char this_node = (char) (NODE_NAMES_START + i);
+        print_and_file(outfile, "  %c", this_node);
+    }
+
+    for (size_t i = 0; i < graph->vertices_len; i++)
+    {
+        char this_node = (char) (NODE_NAMES_START + i);
+        print_and_file(outfile, "\n%c  ", this_node);
+
+        const vertex_t *v = graph_get_vertex(graph, i);
+        for (size_t j = 0; j < graph->vertices_len; j++)
+        {
+            if (j == i)
+            {
+                print_and_file(outfile, "%2lu", 0l);
+                continue;
+            }
+
+            const edge_t *e = vertex_get_edge(v, j);
+
+            // if no edge exists, print blank and move on
+            if (e == NULL)
+            {
+                print_and_file(outfile, "%s", "   ");
+                continue;
+            }
+
+            print_and_file(outfile, " %2lu", e->weight);
+        }
+    }
+
+    print_and_file(outfile, "%s", "\n");
+}
+
+// print shortest path between vertices -- assuming we have already run dijkstra's on the graph
+void graph_print_shortest_path(FILE *outfile, const graph_t *graph, size_t s, size_t d)
+{
+    // get vertex from graph
+    vertex_t *v = graph_get_vertex(graph, d);
+
+    if (v == NULL)
+    {
+        errno = EINVAL;
+        return;
+    }
+
+    char src = (char) (NODE_NAMES_START + s);
+    char dest = (char) (NODE_NAMES_START + d);
+    char prev = (char) (v->prev == s ? dest : NODE_NAMES_START + v->prev);
+
+    print_and_file(outfile, "%c (%c, %c)\n", dest, src, prev);
 }
 
 // create a vertex
@@ -109,6 +212,19 @@ void vertex_add_edge(vertex_t *v, edge_t *e)
 
     // add this new edge to the list of edges for this vertex
     v->edges[v->edges_len++] = e;
+}
+
+// get an edge to a destination vertex
+edge_t *vertex_get_edge(const vertex_t *v, size_t dest)
+{
+    for (size_t i = 0; i < v->edges_len; i++)
+    {
+        edge_t *e = v->edges[i];
+        if (e->vertex == dest)
+            return e;
+    }
+
+    return NULL;
 }
 
 // create a heap

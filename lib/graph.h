@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #define NODE_NAMES_START 'u'
+#define FILE_MAX_LINE_LEN 100
 
 
 // ================
@@ -46,6 +47,9 @@ vertex_t;
 vertex_t *vertex_create();
 void vertex_destroy(vertex_t *);
 
+// get an edge to a destination vertex
+edge_t *vertex_get_edge(const vertex_t *, size_t);
+
 // create a vertex
 void vertex_add_edge(vertex_t *, edge_t *);
 
@@ -70,11 +74,20 @@ void graph_destroy(graph_t *);
 // add a vertex to the graph
 void graph_add_vertex(graph_t *, size_t);
 
+// get a vertex from the graph
+vertex_t *graph_get_vertex(const graph_t *, size_t);
+
 // add an edge to the graph
 void graph_add_edge(graph_t *, char, char, size_t);
 
 // load a graph from file
 void graph_load(graph_t *, FILE *);
+
+// print a graph as an adjacency matrix
+void graph_print_adjacency(const graph_t *);
+
+// print the shortest path between two vertices
+void graph_print_shortest_path(FILE *, const graph_t *, size_t, size_t);
 
 
 // ================

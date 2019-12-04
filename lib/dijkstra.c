@@ -2,12 +2,9 @@
 
 #include <limits.h>
 
-void dijkstra(graph_t *graph, char src, char dest)
+void dijkstra(graph_t *graph, size_t src, size_t dest)
 {
     size_t i, j;
-
-    src -= NODE_NAMES_START;
-    dest -= NODE_NAMES_START;
 
     for (i = 0; i < graph->vertices_len; i++)
     {
@@ -53,4 +50,6 @@ void dijkstra(graph_t *graph, char src, char dest)
             }
         }
     }
+
+    heap_destroy(heap);
 }
