@@ -104,7 +104,8 @@ void graph_load(graph_t *graph, FILE *file)
         }
 
         // parse left, right, and weight from line
-        char left, right; size_t weight;
+        char left, right;
+        size_t weight;
         ssize_t items_parsed = sscanf(buf, "%c %c %lu", &left, &right, &weight); // NOLINT(cert-err34-c)
         if (items_parsed != 3)
         {
@@ -123,7 +124,7 @@ void graph_print_adjacency(const graph_t *graph)
     FILE *outfile = fopen("matrix.txt", "w+");
     if (errno != 0) return;
 
-    print_and_file(outfile, "%s" , "  ");
+    print_and_file(outfile, "%s", "  ");
     for (size_t i = 0; i < graph->vertices_len; i++)
     {
         char this_node = (char) (NODE_NAMES_START + i);
@@ -140,7 +141,7 @@ void graph_print_adjacency(const graph_t *graph)
         {
             if (j == i)
             {
-                print_and_file(outfile, "%2lu", 0l);
+                print_and_file(outfile, "%2lu ", 0l);
                 continue;
             }
 
@@ -149,11 +150,11 @@ void graph_print_adjacency(const graph_t *graph)
             // if no edge exists, print blank and move on
             if (e == NULL)
             {
-                print_and_file(outfile, "%s", "   ");
+                print_and_file(outfile, "%s", " . ");
                 continue;
             }
 
-            print_and_file(outfile, " %2lu", e->weight);
+            print_and_file(outfile, "%2lu ", e->weight);
         }
     }
 
